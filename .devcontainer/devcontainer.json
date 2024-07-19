@@ -14,7 +14,12 @@
         }
     },
     "postCreateCommand": "pip install -r .devcontainer/requirements.txt",
-    "appPort": [8000],
+    "appPort": [
+        "8000:8000"
+    ],
+    "forwardPorts": [
+      8000
+    ],
     "mounts": [
         "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
     ]
