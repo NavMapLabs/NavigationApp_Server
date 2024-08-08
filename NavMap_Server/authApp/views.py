@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from .forms import CustomUserCreationForm
 
+
 # Create your views here.
 def register(request):
     if request.method == 'POST':
@@ -22,7 +23,7 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect('homes')
+            return redirect('admin_view')
         else:
             return render(request, 'authapp/login.html', {'error': 'invalid credentials'})
     return render(request, 'authapp/login.html')
@@ -31,5 +32,3 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
-
-

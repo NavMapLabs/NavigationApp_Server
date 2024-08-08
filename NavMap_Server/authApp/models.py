@@ -5,10 +5,11 @@ from django.db import models
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
-        ('user', 'User'),
+        ('editor', 'Editor'),
+        ('viewer', 'Viewer'),
     )
     
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='viewer')
     
     def __str__(self):
         return self.username
