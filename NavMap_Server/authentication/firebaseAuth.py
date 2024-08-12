@@ -5,6 +5,7 @@ from django.contrib.auth.models import User, AnonymousUser
 from .models import userPermission
 import firebase_admin, os
 from firebase_admin import credentials
+
 BASEDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 cred = credentials.Certificate(os.path.join(BASEDIR, "authentication/firebase_credentials.json"))
 firebase_admin.initialize_app(cred)
@@ -53,6 +54,7 @@ class firebaseAuthMiddleware:
             jwt = jwt.split(' ')
             jwt = jwt[1]
             # decode_token = verify_firebase_token(jwt)
+            # uid = decode_token["uid"]
             # if uid == None:
             #     request.user = AnonymousUser()
             #     return

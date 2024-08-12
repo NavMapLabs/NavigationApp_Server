@@ -10,6 +10,10 @@ class userPermission(models.Model):
     uid = models.CharField(max_length=100)
     level =models.IntegerField(choices= ACCESS_LEVEL)
 
-class dummyData(models.Model):
+class map_editor(models.Model):
     uid = models.CharField(max_length=100)
     map = models.CharField(max_length=100)
+    
+class map_data(models.Model):
+    map = models.CharField(max_length=100)
+    map_data = models.CharField(max_length=100)
