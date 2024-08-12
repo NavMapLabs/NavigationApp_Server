@@ -45,8 +45,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    "authentication.firebaseAuth.firebaseAuthMiddleware",
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    "authentication.firebaseAuth.firebaseAuthMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

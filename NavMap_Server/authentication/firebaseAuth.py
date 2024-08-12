@@ -43,6 +43,8 @@ class firebaseAuthMiddleware:
     
     def process_request(self, request):
         print("request processing by middleware")
+        if "admin" in request.path:
+            return
         jwt = request.headers.get('Authorization')
         if jwt == None:
             #then it will create a anonymous user

@@ -11,7 +11,7 @@ def home(request):
 def renderTest(request):
     return render(request ,'placeholder.html')
 
-# @login_required
+@login_required
 def test(request):
     print(request.user.is_authenticated)
     return(HttpResponse("logged in\n"))
