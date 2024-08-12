@@ -5,4 +5,5 @@ urlpatterns = [
     path("",views.home ,name = "home"),
     path("test_page", views.renderTest, name = "renderTest"),
     path("test", views.test, name = "testing loggin decorator")
+    
 ]

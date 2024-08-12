@@ -3,11 +3,11 @@ from functools import wraps
 from django.http import HttpResponse, HttpRequest
 from django.contrib.auth.models import User, AnonymousUser
 from .models import userPermission
-# import firebase_admin
-# from firebase_admin import credentials
-
-# cred = credentials.Certificate("./credentials.json")
-# firebase_admin.initialize_app(cred)
+import firebase_admin, os
+from firebase_admin import credentials
+BASEDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cred = credentials.Certificate(os.path.join(BASEDIR, "authentication/firebase_credentials.json"))
+firebase_admin.initialize_app(cred)
 
 def verify_firebase_token(id_token):
     try:
@@ -17,10 +17,9 @@ def verify_firebase_token(id_token):
     except auth.InvalidIdTokenError:
         return None
 
-# only for testing
+# only for testing the data access during middleware phase, level of privilege can be done like this. but maybe group is better
 def get_userInfo(jwt):
-    # parse uid to get jwt
-    
+    # parse uid to get jw
     #check if uid is in the database
     print(jwt)
     if jwt == None:
@@ -40,24 +39,27 @@ class firebaseAuthMiddleware:
         self.process_response(request, response)
         return response
 
-    
     def process_request(self, request):
         print("request processing by middleware")
+        # make sure the admin page can still work properly in browser, need to fix when we need admin to remotely grant access through http request
+        # for now using the webpage built-in page can work.
         if "admin" in request.path:
             return
         jwt = request.headers.get('Authorization')
         if jwt == None:
-            #then it will create a anonymous user
             request.user= AnonymousUser()
             pass
         else:
             jwt = jwt.split(' ')
             jwt = jwt[1]
-            # uid = verify_firebase_token(jwt)
+            # decode_token = verify_firebase_token(jwt)
+            # if uid == None:
+            #     request.user = AnonymousUser()
+            #     return
             user,created = User.objects.get_or_create(username = jwt)
             request.user = user
             get_userInfo(jwt)
-        #check uid with the database
+        # check uid with the database for previlege?
         
     
     def process_response(self, request, response):

@@ -20,5 +20,4 @@ def test(request):
     # if fields:
     #     fields = fields.split(',')
     # return JsonResponse(list(data), safe= False)
-    
         
