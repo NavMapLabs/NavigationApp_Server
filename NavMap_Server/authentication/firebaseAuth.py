@@ -53,8 +53,7 @@ class firebaseAuthMiddleware:
         else:
             jwt = jwt.split(' ')
             jwt = jwt[1]
-            # decode_token = verify_firebase_token(jwt)
-            # uid = decode_token["uid"]
+            # uid= verify_firebase_token(jwt)
             # if uid == None:
             #     request.user = AnonymousUser()
             #     return

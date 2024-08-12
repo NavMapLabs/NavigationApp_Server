@@ -22,6 +22,7 @@ def test(request):
     # if fields:
     #     fields = fields.split(',')
     # return JsonResponse(list(data), safe= False)
+
 @csrf_exempt
 @require_http_methods(['PUT'])
 def put_test(request):
