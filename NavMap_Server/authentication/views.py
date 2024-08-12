@@ -13,15 +13,17 @@ def home(request):
 def renderTest(request):
     return render(request ,'placeholder.html')
 
-@login_required
+@csrf_exempt
 def test(request):
-    print(request.user.is_authenticated)
-    return(HttpResponse("logged in\n"))
+
+    data = { "message": "fuck" }
+    print(data)
     # keys = request.GET.get("data")
     # data = "data"
     # if fields:
     #     fields = fields.split(',')
     # return JsonResponse(list(data), safe= False)
+    return JsonResponse(data)
 
 @csrf_exempt
 @require_http_methods(['PUT'])

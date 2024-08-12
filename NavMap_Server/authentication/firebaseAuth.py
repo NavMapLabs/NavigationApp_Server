@@ -13,9 +13,11 @@ firebase_admin.initialize_app(cred)
 def verify_firebase_token(id_token):
     try:
         decoded_token = auth.verify_id_token(id_token)
-        uid = decoded_token['uid']
+        uid = decoded_token['user_id']
+        
         return uid
     except auth.InvalidIdTokenError:
+        print("exception bitch")
         return None
 
 # only for testing the data access during middleware phase, level of privilege can be done like this. but maybe group is better
@@ -46,20 +48,21 @@ class firebaseAuthMiddleware:
         # for now using the webpage built-in page can work.
         if "admin" in request.path:
             return
+        print(request.body)
         jwt = request.headers.get('Authorization')
+        print("JWT Token is :", jwt)
         if jwt == None:
             request.user= AnonymousUser()
             pass
         else:
             jwt = jwt.split(' ')
             jwt = jwt[1]
-            # uid= verify_firebase_token(jwt)
-            # if uid == None:
-            #     request.user = AnonymousUser()
-            #     return
+            uid = verify_firebase_token(jwt)
+            if uid == None:
+                request.user = AnonymousUser()
+                return
             user,created = User.objects.get_or_create(username = jwt)
             request.user = user
-            get_userInfo(jwt)
         # check uid with the database for previlege?
         
     
