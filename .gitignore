@@ -162,4 +162,4 @@ cython_debug/
 #.idea/
 
 #firebase credential
-firebase_credentials.json
+NavMap_Server/authentication/firebase_credentials.json

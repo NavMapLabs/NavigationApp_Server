@@ -48,9 +48,7 @@ class firebaseAuthMiddleware:
         # for now using the webpage built-in page can work.
         if "admin" in request.path:
             return
-        print(request.body)
         jwt = request.headers.get('Authorization')
-        print("JWT Token is :", jwt)
         if jwt == None:
             request.user= AnonymousUser()
             pass
