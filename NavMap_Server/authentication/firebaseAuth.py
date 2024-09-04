@@ -2,6 +2,7 @@ from firebase_admin import auth
 from functools import wraps
 from django.http import HttpResponse, HttpRequest
 from django.contrib.auth.models import User, AnonymousUser
+from django.contrib.sessions.models import Session
 from .models import userPermission
 import firebase_admin, os
 from firebase_admin import credentials
@@ -52,6 +53,10 @@ class firebaseAuthMiddleware:
         # if auth session exist, skip the firebase validation and use the session to update user object
         if request.session.session_key and request.session.exists(request.session.session_key):
             # --todo: fetch the session key
+            print(request.session)
+            if 'user_name' not in request.session:
+                print("no user name")
+                return
             uid = request.session.get("user_name")
             
             # --todo: set the user object to the user with sesseion value username
@@ -60,13 +65,14 @@ class firebaseAuthMiddleware:
             return
             
         jwt = request.headers.get('Authorization')
-        if jwt == None:
+        if jwt == None or jwt == "":
             request.user= AnonymousUser()
             pass
         else:
             jwt = jwt.split(' ')
             jwt = jwt[1]
-            uid = verify_firebase_token(jwt)
+            # uid = verify_firebase_token(jwt)
+            uid = jwt
             if uid == None:
                 request.user = AnonymousUser()
                 return

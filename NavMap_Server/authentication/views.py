@@ -3,6 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from . import models
+from django.contrib.sessions.models import Session
 from django.views.decorators.csrf import csrf_exempt
 import json
 
@@ -15,14 +16,13 @@ def renderTest(request):
 
 @csrf_exempt
 def test(request):
-
-    data = { "message": "fuck" }
+    
+    if 'user_name' in request.session:
+        name = request.session["user_name"]
+        data = { "message": name }
+    else:
+        data = { "message": "no session" }
     print(data)
-    # keys = request.GET.get("data")
-    # data = "data"
-    # if fields:
-    #     fields = fields.split(',')
-    # return JsonResponse(list(data), safe= False)
     return JsonResponse(data)
 
 @csrf_exempt
