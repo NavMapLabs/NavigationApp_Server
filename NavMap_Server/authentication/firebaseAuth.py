@@ -48,6 +48,17 @@ class firebaseAuthMiddleware:
         # for now using the webpage built-in page can work.
         if "admin" in request.path:
             return
+        
+        # if auth session exist, skip the firebase validation and use the session to update user object
+        if request.session.session_key and request.session.exists(request.session.session_key):
+            # --todo: fetch the session key
+            uid = request.session.get("user_name")
+            
+            # --todo: set the user object to the user with sesseion value username
+            user,created = User.objects.get_or_create(username = uid)
+            request.user = user
+            return
+            
         jwt = request.headers.get('Authorization')
         if jwt == None:
             request.user= AnonymousUser()
@@ -59,8 +70,12 @@ class firebaseAuthMiddleware:
             if uid == None:
                 request.user = AnonymousUser()
                 return
-            user,created = User.objects.get_or_create(username = jwt)
+            #right now it stores user_id as username.
+            user,created = User.objects.get_or_create(username = uid)
             request.user = user
+            
+            #--todo:store username in session dictionary for the first time session is created
+            request.session["user_name"] = uid
         # check uid with the database for previlege?
         
     
