@@ -21,5 +21,6 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('authentication/', include("authentication.urls")),
+    path('map_manager/', include("map_manager.urls")),
     path('', views.index, name = "index")
 ]
