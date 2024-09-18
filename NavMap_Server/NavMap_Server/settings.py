@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-z8&@%0n)6kil(6iq59&b2bnhk$mi1(-nt&=m-t!=%9wnp^7vnw
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', '0.0.0.0', 'localhost']
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'authentication',
     'corsheaders',
+    'map_manager',
 ]
 
 MIDDLEWARE = [
@@ -130,4 +131,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_NAME = 'sessionid'
-SESSION_COOKIE_AGE = 60 * 1
+SESSION_COOKIE_AGE = 30
