@@ -3,7 +3,7 @@ from functools import wraps
 from django.http import HttpResponse, HttpRequest
 from django.contrib.auth.models import User, AnonymousUser
 from django.contrib.sessions.models import Session
-from .models import userPermission, user
+from .models import user
 import firebase_admin, os
 from firebase_admin import credentials
 
@@ -21,17 +21,6 @@ def verify_firebase_token(id_token):
         print("exception bitch")
         return None
 
-# only for testing the data access during middleware phase, level of privilege can be done like this. but maybe group is better
-def get_userInfo(jwt):
-    # parse uid to get jw
-    #check if uid is in the database
-    print(jwt)
-    if jwt == None:
-        return None
-    if userPermission.objects.filter(uid=jwt):
-        print(userPermission.objects.get(uid=jwt).level)
-        return userPermission.objects.get(uid=jwt).uid
-    return None
 
 class firebaseAuthMiddleware:
     def __init__(self, get_response):

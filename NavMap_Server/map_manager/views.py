@@ -18,12 +18,13 @@ def create_user_entry(request):
         return
     #for now, uid and username is actually not the same
     # todo: change store the uid and username in the session during firebase middleware token verification phase, then update here
-    authmodels.user.objects.create(uid = request.user.username, username = request.user.username, verified_status = False)
+    authmodels.user.objects.create(uid = request.user.username, user_name = request.user.username, permission_level = 1)
     return
 # ---------------------------------- end of helper function -----------------------------------
 
 # return the maps that match with the search, no auth needed
 @require_http_methods(['GET'])
+#input map name, return map_id
 def search(request):
     # return the list of matched map name (maybe the description)
     #--todo -------
@@ -32,6 +33,7 @@ def search(request):
 
 # return the edge and node data to the frontend, no auth needed
 @require_http_methods(['GET'])
+#input map name return map information and all variations
 def get_map(request):
     create_user_entry(request)
     data = request.body
@@ -48,110 +50,97 @@ def get_map(request):
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
     # get data
-    map = models.map.objects.get(name = map_name)
-    if not request.user.is_authenticated:
-        return_data = {
-        "data_type": "Map_reqeust_response",
-        "data": {
-            "map_name": map_name,
-            "edge": map.edges,
-            "node": map.node,
-            "map_description": map.map_description
-        }
-    }
-    else:
-        user = authmodels.user.objects.get(uid = request.user.username)
-        update_user_history(user, map_name)
-        return_data = {
-            "data_type": "Map_reqeust_response",
-            "data": {
-                "map_name": map_name,
-                "map_manager": map.manager,
-                "map_editor": map.editor,
-                "edge": map.edges,
-                "node": map.node,
-                "map_description": map.map_description
-            }
-        }
+    try:
+        map = models.maps.objects.get(map_name = map_name)
+        map_variations = models.map_variation.objects.filter(map_info__map_name = map_name)
+    except models.maps.DoesNotExist:
+        return HttpResponse("map not found\n", status = 404)
+    variations_maps_dict = dict()
+    
+    if not map_variations.exists():
+        return HttpResponse("no map variation found, which shouldn't happen, please contact devs\n", status = 404)
+    for variation in map_variations:
+        map_variation_data = dict()
+        map_variation_data["version_name"] = variation.version_name
+        map_variation_data["map_editor"] = variation.map_editor
+        map_variation_data["map_data"] = variation.map_data
+        variations_maps_dict[variation.map_id] = map_variation_data
+    
+
+    return_data,data = dict()
+    return_data["data_type"] = "Map_request_response"
+    data["map_name"] = map_name
+    data["map_addr"] = map.map_addr
+    data["map_description"] = map.map_description
+    data["variations"] = variations_maps_dict
+    return_data["data"] = data
+    return_data = json.dumps(return_data)
     print(return_data)
     print(request.session["uid"])
-    return_data = json.dumps(return_data)
-    return JsonResponse(return_data, safe = False, status = 200)
+    return JsonResponse(return_data, status = 200)
 
-# {map_name, user}
+# for later
 @login_required
 @require_http_methods(['PUT'])
 def grant_edit_permission(request):
-    # the request is the map_manager of that specific map
-    # update the map's editor entry to add the user
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            datatype = data["update_editor"]
-            if datatype != "Map_update":
-                raise json.JSONDecodeError
-            data = data["data"]
-            map_name = data["map_name"]
-            map_editor = data["map_editor"] # should be a list of updated editors, not just the new editor
-        except json.JSONDecodeError:
-            return HttpResponse("key error", status = 400)
-    else :
-        return HttpResponse("Wrong data content type, only accept json\n",status = 400)
-    # check permission
-    map = models.map.objects.get(name = map_name)
-    map_manager = map.manager
-    user = authmodels.user.objects.get(uid = request.user.username)
-    if user.username not in map_manager:
-        return HttpResponse("Permission denied\n",status = 403)
-    
-    # update map
-    map.editor = map_editor
-    return HttpResponse("Success\n", status = 200)
-    
+    pass
+
 # temparary create map for dev stage.
+@login_required
 @require_http_methods(['POST'])
 def dev_create_map(request):
-    if not request.user.is_authenticated:
+    create_user_entry(request)
+    uid = request.session.get('uid')
+    user = authmodels.user.objects.get(uid = uid)
+    if not request.user.is_authenticated and uid == None:
         return HttpResponse("Permission denied\n",status = 403)
+    #check permission/ get session uid
+    if user.permission_level < 2:
+        return HttpResponse("need to go through admin page to pump you permission to editor manually for now\n",status = 403)
+    
     data = request.body
     # parse data
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
             datatype = data["data_type"]
-            if datatype != "Map":
+            if datatype != "Map_update":
                 raise json.JSONDecodeError
             data = data["data"]
+            # it need map name, map addr, map data
             map_name = data["map_name"]
-            map_description = data["map_description"]
-            map_editor = data["map_editor"]
-            map_manager = data["map_manager"]
-            map_edge = data["map_edge"]
-            map_node = data["map_node"]
-        except json.JSONDecodeError:
+            version_name = data["version_name"]
+            map_address = data["map_address"]
+            map_data = data["map_data"]
+        except (json.JSONDecodeError, KeyError):
             return HttpResponse("key error", status = 400)
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
+    # check for optional fields
+    if 'map_description' in data:
+        map_description = data["map_description"]
     # create new map entry in database
     try:
-        models.map.objects.create(name = map_name, editor = map_editor, manager = map_manager, edges = map_edge, node = map_node, map_description = map_description)
+        models.maps.objects.create(map_name= map_name, map_addr = map_address, map_description = map_description)
+        models.map_variation.objects.create(version_name = version_name, map_info = map_name, map_editor = user, map_data = map_data)
     except IntegrityError as e:
+        # so if map with the same name already exist, or variation with the same map_id already exist
         return HttpResponse( e + "Map with that name already exists\n",status = 400)
 
 @login_required
 @require_http_methods(['DELETE'])
 # should be manager only, not sure if dev need to manually verify
 def delete_map(request):
-    #--todo--
-    pass
-
-# Since user can't create map before we manually verify them, the actual map creation probably can't be done directly by the user, this would be more of a notification to the devs?
-def create_map(request):
-    pass
-
-@login_required
-@require_http_methods(['PUT'])
-def update_map(request):
+    create_user_entry(request)
+    uid = request.session.get('uid')
+    user = authmodels.user.objects.get(uid = uid)
+    if not request.user.is_authenticated and uid == None:
+        return HttpResponse("Permission denied\n",status = 403)
+    #check permission/ get session uid
+    if user.permission_level < 2:
+        return HttpResponse("need to go through admin page to pump you permission to editor manually for now\n",status = 403)
+    data = request.body
+    # parse data
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
@@ -159,57 +148,83 @@ def update_map(request):
             if datatype != "Map_update":
                 raise json.JSONDecodeError
             data = data["data"]
+            # it need map name, map addr, map data
+            map_id = data["map_id"]
+        except (json.JSONDecodeError, KeyError):
+            return HttpResponse("key error", status = 400)
+    else :
+        return HttpResponse("Wrong data content type, only accept json\n",status = 400)
+    # need to update this later
+    try:
+        #check if it's still exist
+        map_varient = models.map_variation.objects.get(map_id = map_id)
+        if not map_varient.exist():
+            raise models.map_variation.DoesNotExist
+        # check if it's the only version, if it is, delete the map as well
+        models.map_variation.objects.get(map_id = map_id).delete()
+        if models.map_variation.objects.filter(map_info = map_varient.map_info).count() == 0:
+            models.maps.objects.get(map_name = map_varient.map_info).delete()
+    except models.map_variation.DoesNotExist:
+        return HttpResponse("map varient does not exist\n",status = 400)
+    return HttpResponse("Success\n", status = 200)
+
+# Since user can't create map before we manually verify them, the actual map creation probably can't be done directly by the user, this would be more of a notification to the devs?
+def create_map(request):
+    pass
+
+# use case, update on existing variation, update on new variation 
+@login_required
+@require_http_methods(['PUT'])
+def update_map(request):
+    create_user_entry(request)
+    uid = request.session.get('uid')
+    user = authmodels.user.objects.get(uid = uid)
+    if not request.user.is_authenticated and uid == None:
+        return HttpResponse("Permission denied\n",status = 403)
+    #check permission/ get session uid
+    if user.permission_level < 2:
+        return HttpResponse("need to go through admin page to pump you permission to editor manually for now\n",status = 403)
+    data = request.body
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            datatype = data["data_type"]
+            if datatype != "Map_update":
+                raise json.JSONDecodeError
+            data = data["data"]
+            map_id = data["map_id"]
             map_name = data["map_name"]
-            map_description = data["map_description"]
-            map_edge = data["map_edge"]
-            map_node = data["map_node"]
+            version_name = data["version_name"]
+            map_data = data["map_data"] 
+
         except json.JSONDecodeError:
             return HttpResponse("key error", status = 400)
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
-    
-    # check permission
-    map = models.map.objects.get(name = map_name)
-    if request.user.username not in map.editor or request.user.username not in map.manager:
-        return HttpResponse("Permission denied\n",status = 403)
-    # update map
-    map.map_description = map_description
-    map.edges = map_edge
-    map.node = map_node
-    map.save()
-    return HttpResponse("Success\n", status = 200)
+
+    # check if map exist
+    try:
+        maps = models.maps.objects.get(map_name = map_name)
+        if "map_description" in data:
+            maps.map_description = data["map_description"]
+        # create new map variation
+        if not models.map_variation.objects.filter(map_id = map_id).exists():
+            models.map_variation.objects.create(version_name = version_name, map_info = maps, map_editor = user, map_data = map_data)
+            return HttpResponse("sucess\n",status = 200)
+        # update the old variation
+        else:
+            map_varient = models.map_variation.objects.get(map_id = map_id)
+            map_varient.map_data = map_data
+            map_varient.version_name = version_name
+            map_varient.save()
+            return HttpResponse("sucess\n",status = 200)          
+    except models.maps.DoesNotExist:
+        return HttpResponse("map not found\n", status = 404)  
     
     
 # return user information all at once 
 def get_user_info(request):
-    if not request.user.is_authenticated:
-        return HttpResponse("Permission denied\n",status = 403)
-    uid = request.session["uid"]
-    user = models.map.objects.filter(uid = request.user.username)
-    username = user.username
-    managed_map = user.managed_map
-    editable_map = user.editable_map
-    history = user.history
-    
-    # craft return json
-    data = {
-        "data_type": "User",
-        "data":{
-            "uid": uid,
-            "Username": username,
-            "managed_map": managed_map,
-            "editable_map": editable_map,
-            "history": history
-        }
-    }
-    # return in json
-    data = json.dumps(data)
-    return JsonResponse(data, status = 200)
-
-
-
-
-
+    pass
 
 # old structure -----------------------------------
 @csrf_exempt
