@@ -32,6 +32,7 @@ def search(request):
 
 
 # return the edge and node data to the frontend, no auth needed
+@csrf_exempt
 @require_http_methods(['GET'])
 #input map name return map information and all variations
 def get_map(request):
@@ -86,6 +87,7 @@ def grant_edit_permission(request):
     pass
 
 # temparary create map for dev stage.
+@csrf_exempt
 @login_required
 @require_http_methods(['POST'])
 def dev_create_map(request):
@@ -117,15 +119,21 @@ def dev_create_map(request):
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
     # check for optional fields
+    map_description = ""
     if 'map_description' in data:
         map_description = data["map_description"]
     # create new map entry in database
-    try:
-        models.maps.objects.create(map_name= map_name, map_addr = map_address, map_description = map_description)
-        models.map_variation.objects.create(version_name = version_name, map_info = map_name, map_editor = user, map_data = map_data)
-    except IntegrityError as e:
-        # so if map with the same name already exist, or variation with the same map_id already exist
-        return HttpResponse( e + "Map with that name already exists\n",status = 400)
+    if models.maps.objects.filter(map_name = map_name).exists():
+        return HttpResponse("Map with that name already exists\n",status = 400)
+    # try:
+    models.maps.objects.create(map_name= map_name, map_addr = map_address, map_description = map_description)
+    new_map= models.maps.objects.get(map_name = map_name)
+    models.map_variation.objects.create(version_name = version_name, map_info = new_map, map_editor = user, map_data = map_data)
+    # except IntegrityError as e:
+    #     # so if map with the same name already exist, or variation with the same map_id already exist
+    #     models.maps.objects.get(map_name = map_name).delete()
+    #     return HttpResponse( "can't make variation object\n",status = 400)
+    return HttpResponse("Success\n", status = 200)
 
 @login_required
 @require_http_methods(['DELETE'])
@@ -173,6 +181,7 @@ def create_map(request):
     pass
 
 # use case, update on existing variation, update on new variation 
+@csrf_exempt
 @login_required
 @require_http_methods(['PUT'])
 def update_map(request):
