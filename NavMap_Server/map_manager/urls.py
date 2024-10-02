@@ -8,4 +8,5 @@ urlpatterns = [
     path("get_map", views.get_map, name = "get map"),
     path("grant_edit_permission", views.grant_edit_permission, name = "give edit permission"),
     path("create_map", views.dev_create_map, name = "create map"),
+    path("delete_map", views.delete_map, name = "delete map"),
 ]

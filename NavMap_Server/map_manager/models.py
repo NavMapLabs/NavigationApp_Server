@@ -6,6 +6,7 @@ class maps(models.Model):
     map_name = models.CharField(max_length=100, primary_key=True)
     map_addr = models.CharField(max_length=100)
     map_description = models.CharField(max_length=200)
+    
 
 # map with specific version
 class map_variation(models.Model):

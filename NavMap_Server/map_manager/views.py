@@ -4,6 +4,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from . import models
 from authentication import models as authmodels
 import json
@@ -46,8 +47,8 @@ def get_map(request):
                 raise json.JSONDecodeError
             data = data["data"]
             map_name = data["map_name"]
-        except json.JSONDecodeError:
-            return HttpResponse("key error", status = 400)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return HttpResponse("key error", status = 500)
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
     # get data
@@ -60,22 +61,25 @@ def get_map(request):
     
     if not map_variations.exists():
         return HttpResponse("no map variation found, which shouldn't happen, please contact devs\n", status = 404)
+    count =1
     for variation in map_variations:
         map_variation_data = dict()
         map_variation_data["version_name"] = variation.version_name
-        map_variation_data["map_editor"] = variation.map_editor
+        map_variation_data["map_id"] = str(variation.map_id)
+        map_variation_data["map_editor"] = variation.map_editor.user_name
         map_variation_data["map_data"] = variation.map_data
-        variations_maps_dict[variation.map_id] = map_variation_data
+        variations_maps_dict[count] = map_variation_data
+        count += 1
     
-
-    return_data,data = dict()
+    data = dict()
+    return_data = dict()
     return_data["data_type"] = "Map_request_response"
     data["map_name"] = map_name
     data["map_addr"] = map.map_addr
     data["map_description"] = map.map_description
     data["variations"] = variations_maps_dict
     return_data["data"] = data
-    return_data = json.dumps(return_data)
+    # return_data = json.dumps(return_data)
     print(return_data)
     print(request.session["uid"])
     return JsonResponse(return_data, status = 200)
@@ -106,7 +110,7 @@ def dev_create_map(request):
         try:
             data = json.loads(request.body)
             datatype = data["data_type"]
-            if datatype != "Map_update":
+            if datatype != "Map_update": # the exception may not be needed
                 raise json.JSONDecodeError
             data = data["data"]
             # it need map name, map addr, map data
@@ -114,8 +118,8 @@ def dev_create_map(request):
             version_name = data["version_name"]
             map_address = data["map_address"]
             map_data = data["map_data"]
-        except (json.JSONDecodeError, KeyError):
-            return HttpResponse("key error", status = 400)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return HttpResponse("key error", status = 500)
     else :
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
     # check for optional fields
@@ -125,16 +129,17 @@ def dev_create_map(request):
     # create new map entry in database
     if models.maps.objects.filter(map_name = map_name).exists():
         return HttpResponse("Map with that name already exists\n",status = 400)
-    # try:
-    models.maps.objects.create(map_name= map_name, map_addr = map_address, map_description = map_description)
-    new_map= models.maps.objects.get(map_name = map_name)
-    models.map_variation.objects.create(version_name = version_name, map_info = new_map, map_editor = user, map_data = map_data)
-    # except IntegrityError as e:
-    #     # so if map with the same name already exist, or variation with the same map_id already exist
-    #     models.maps.objects.get(map_name = map_name).delete()
-    #     return HttpResponse( "can't make variation object\n",status = 400)
+    try:
+        models.maps.objects.create(map_name= map_name, map_addr = map_address, map_description = map_description)
+        new_map= models.maps.objects.get(map_name = map_name)
+        models.map_variation.objects.create(version_name = version_name, map_info = new_map, map_editor = user, map_data = map_data)
+    except IntegrityError as e:
+        # so if map with the same name already exist, or variation with the same map_id already exist
+        models.maps.objects.get(map_name = map_name).delete()
+        return HttpResponse( "can't make variation object\n",status = 400)
     return HttpResponse("Success\n", status = 200)
 
+@csrf_exempt
 @login_required
 @require_http_methods(['DELETE'])
 # should be manager only, not sure if dev need to manually verify
@@ -166,13 +171,14 @@ def delete_map(request):
     try:
         #check if it's still exist
         map_varient = models.map_variation.objects.get(map_id = map_id)
-        if not map_varient.exist():
-            raise models.map_variation.DoesNotExist
         # check if it's the only version, if it is, delete the map as well
+        print(models.map_variation.objects.filter(map_info = map_varient.map_info).count())
         models.map_variation.objects.get(map_id = map_id).delete()
+        print(models.map_variation.objects.filter(map_info = map_varient.map_info).count())
         if models.map_variation.objects.filter(map_info = map_varient.map_info).count() == 0:
-            models.maps.objects.get(map_name = map_varient.map_info).delete()
-    except models.map_variation.DoesNotExist:
+            print("count is 0")
+            map_varient.map_info.delete()
+    except :
         return HttpResponse("map varient does not exist\n",status = 400)
     return HttpResponse("Success\n", status = 200)
 
@@ -201,7 +207,6 @@ def update_map(request):
             if datatype != "Map_update":
                 raise json.JSONDecodeError
             data = data["data"]
-            map_id = data["map_id"]
             map_name = data["map_name"]
             version_name = data["version_name"]
             map_data = data["map_data"] 
@@ -217,17 +222,18 @@ def update_map(request):
         if "map_description" in data:
             maps.map_description = data["map_description"]
         # create new map variation
-        if not models.map_variation.objects.filter(map_id = map_id).exists():
+        
+        if not "map_id" in data :
             models.map_variation.objects.create(version_name = version_name, map_info = maps, map_editor = user, map_data = map_data)
             return HttpResponse("sucess\n",status = 200)
         # update the old variation
         else:
-            map_varient = models.map_variation.objects.get(map_id = map_id)
+            map_varient = models.map_variation.objects.get(map_id = data["map_id"])
             map_varient.map_data = map_data
             map_varient.version_name = version_name
             map_varient.save()
             return HttpResponse("sucess\n",status = 200)          
-    except models.maps.DoesNotExist:
+    except (models.maps.DoesNotExist, models.map_variation.DoesNotExist , ValidationError) :
         return HttpResponse("map not found\n", status = 404)  
     
     
