@@ -38,19 +38,10 @@ def search(request):
 #input map name return map information and all variations
 def get_map(request):
     create_user_entry(request)
-    data = request.body
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            data_type = data["data_type"]
-            if data_type != "Map_request":
-                raise json.JSONDecodeError
-            data = data["data"]
-            map_name = data["map_name"]
-        except (json.JSONDecodeError, KeyError, TypeError):
-            return HttpResponse("key error", status = 500)
-    else :
-        return HttpResponse("Wrong data content type, only accept json\n",status = 400)
+    map_name = request.GET.get('param1')
+    print(map_name)
+    if map_name == None:
+        return HttpResponse("parameter error", status = 400)
     # get data
     try:
         map = models.maps.objects.get(map_name = map_name)
@@ -61,19 +52,21 @@ def get_map(request):
     
     if not map_variations.exists():
         return HttpResponse("no map variation found, which shouldn't happen, please contact devs\n", status = 404)
-    count =1
+    count = 0
     for variation in map_variations:
+        count += 1
         map_variation_data = dict()
         map_variation_data["version_name"] = variation.version_name
         map_variation_data["map_id"] = str(variation.map_id)
         map_variation_data["map_editor"] = variation.map_editor.user_name
         map_variation_data["map_data"] = variation.map_data
         variations_maps_dict[count] = map_variation_data
-        count += 1
+        
     
     data = dict()
     return_data = dict()
     return_data["data_type"] = "Map_request_response"
+    data["variations_count"] = count
     data["map_name"] = map_name
     data["map_addr"] = map.map_addr
     data["map_description"] = map.map_description
@@ -152,22 +145,32 @@ def delete_map(request):
     #check permission/ get session uid
     if user.permission_level < 2:
         return HttpResponse("need to go through admin page to pump you permission to editor manually for now\n",status = 403)
-    data = request.body
-    # parse data
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            datatype = data["data_type"]
-            if datatype != "Map_update":
-                raise json.JSONDecodeError
-            data = data["data"]
-            # it need map name, map addr, map data
-            map_id = data["map_id"]
-        except (json.JSONDecodeError, KeyError):
-            return HttpResponse("key error", status = 400)
-    else :
-        return HttpResponse("Wrong data content type, only accept json\n",status = 400)
-    # need to update this later
+    
+    # get the map_id from the map_version you want to delete, not sure if putting it in parameter is safe
+    create_user_entry(request)
+    map_id= request.GET.get('param1').lower()
+    print(map_id)
+    if map_id == None:
+        return HttpResponse("parameter error", status = 400)
+    
+    
+    
+    # data = request.body
+    # # parse data
+    # if request.content_type == 'application/json':
+    #     try:
+    #         data = json.loads(request.body)
+    #         datatype = data["data_type"]
+    #         if datatype != "Map_update":
+    #             raise json.JSONDecodeError
+    #         data = data["data"]
+    #         # it need map name, map addr, map data
+    #         map_id = data["map_id"]
+    #     except (json.JSONDecodeError, KeyError):
+    #         return HttpResponse("key error", status = 400)
+    # else :
+    #     return HttpResponse("Wrong data content type, only accept json\n",status = 400)
+    # # need to update this later
     try:
         #check if it's still exist
         map_varient = models.map_variation.objects.get(map_id = map_id)
@@ -217,7 +220,7 @@ def update_map(request):
         return HttpResponse("Wrong data content type, only accept json\n",status = 400)
 
     # check if map exist
-    try:
+    try:        
         maps = models.maps.objects.get(map_name = map_name)
         if "map_description" in data:
             maps.map_description = data["map_description"]
@@ -228,6 +231,7 @@ def update_map(request):
             return HttpResponse("sucess\n",status = 200)
         # update the old variation
         else:
+            
             map_varient = models.map_variation.objects.get(map_id = data["map_id"])
             map_varient.map_data = map_data
             map_varient.version_name = version_name
