@@ -36,7 +36,7 @@ def search(request):
 @csrf_exempt
 @require_http_methods(['GET'])
 #input map name return map information and all variations
-def get_map(request):
+def get_map_meta_info(request):
     create_user_entry(request)
     map_name = request.GET.get('param1')
     print(map_name)
@@ -59,13 +59,11 @@ def get_map(request):
         map_variation_data["version_name"] = variation.version_name
         map_variation_data["map_id"] = str(variation.map_id)
         map_variation_data["map_editor"] = variation.map_editor.user_name
-        map_variation_data["map_data"] = variation.map_data
         variations_maps_dict[count] = map_variation_data
         
     
     data = dict()
     return_data = dict()
-    return_data["data_type"] = "Map_request_response"
     data["variations_count"] = count
     data["map_name"] = map_name
     data["map_addr"] = map.map_addr
@@ -82,6 +80,25 @@ def get_map(request):
 @require_http_methods(['PUT'])
 def grant_edit_permission(request):
     pass
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def id_to_data(request):
+    create_user_entry(request)
+    map_id = request.GET.get('param1')
+    if map_id == None:
+        return HttpResponse("parameter error", status = 400)
+    try:
+        map_variation = models.map_variation.objects.get(map_id = map_id)
+    except models.map_variation.DoesNotExist:
+        return HttpResponse("map not found\n", status = 404)
+    data = dict()
+    data["map_id"] = map_id
+    data["map_data"] = map_variation.map_data
+    data["version_name"] = map_variation.version_name
+    data["map_editor"] = map_variation.map_editor.user_name
+    return JsonResponse(data, status = 200)
 
 # temparary create map for dev stage.
 @csrf_exempt
@@ -102,9 +119,6 @@ def dev_create_map(request):
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
-            datatype = data["data_type"]
-            if datatype != "Map_update": # the exception may not be needed
-                raise json.JSONDecodeError
             data = data["data"]
             # it need map name, map addr, map data
             map_name = data["map_name"]
@@ -206,9 +220,6 @@ def update_map(request):
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
-            datatype = data["data_type"]
-            if datatype != "Map_update":
-                raise json.JSONDecodeError
             data = data["data"]
             map_name = data["map_name"]
             version_name = data["version_name"]
@@ -227,8 +238,10 @@ def update_map(request):
         # create new map variation
         
         if not "map_id" in data :
-            models.map_variation.objects.create(version_name = version_name, map_info = maps, map_editor = user, map_data = map_data)
-            return HttpResponse("sucess\n",status = 200)
+            model = models.map_variation.objects.create(version_name = version_name, map_info = maps, map_editor = user, map_data = map_data)
+            id = model.map_id
+            message = "sucess, New map id:\n" + str(id)
+            return HttpResponse(message,status = 200)
         # update the old variation
         else:
             
