@@ -10,4 +10,5 @@ urlpatterns = [
     path("grant_edit_permission", views.grant_edit_permission, name = "give edit permission"),
     path("create_map", views.dev_create_map, name = "create map"),
     path("delete_map", views.delete_map, name = "delete map"),
+    path("id_to_meta", views.id_to_meta, name = "get map meta based on the id"),
 ]

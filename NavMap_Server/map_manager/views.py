@@ -31,6 +31,25 @@ def search(request):
     #--todo -------
     pass
 
+@require_http_methods(['GET'])
+@csrf_exempt
+def id_to_meta(request):
+    create_user_entry(request)
+    map_id = request.GET.get('param1')
+    if map_id == None:
+        return HttpResponse("parameter error", status = 400)
+    try:
+        map_variation = models.map_variation.objects.get(map_id = map_id)
+    except models.map_variation.DoesNotExist:
+        return HttpResponse("map not found\n", status = 404)
+    data = dict()
+    data["map_id"] = map_id
+    data["map_name"] = map_variation.map_info.map_name
+    data["map_addr"] = map_variation.map_info.map_addr
+    data["map_description"] = map_variation.map_info.map_description
+    data["version_name"] = map_variation.version_name
+    
+    return JsonResponse(data, status = 200)
 
 # return the edge and node data to the frontend, no auth needed
 @csrf_exempt
@@ -59,6 +78,8 @@ def get_map_meta_info(request):
         map_variation_data["version_name"] = variation.version_name
         map_variation_data["map_id"] = str(variation.map_id)
         map_variation_data["map_editor"] = variation.map_editor.user_name
+        map_variation_data["modified_date"] =variation.modified_date.strftime("%Y-%m-%d")
+
         variations_maps_dict[count] = map_variation_data
         
     
@@ -98,6 +119,8 @@ def id_to_data(request):
     data["map_data"] = map_variation.map_data
     data["version_name"] = map_variation.version_name
     data["map_editor"] = map_variation.map_editor.user_name
+    data["modified_date"] = map_variation.modified_date.strftime("%Y-%m-%d")
+    
     return JsonResponse(data, status = 200)
 
 # temparary create map for dev stage.

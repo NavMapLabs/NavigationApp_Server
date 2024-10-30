@@ -15,6 +15,7 @@ class map_variation(models.Model):
     map_info = models.ForeignKey(maps, on_delete=models.CASCADE, related_name='variations', to_field='map_name')
     map_editor =models.ForeignKey(user, on_delete=models.DO_NOTHING, related_name='map_uploaded')
     map_data = models.CharField(max_length=5000, default = "")
+    modified_date = models.DateTimeField(auto_now=True)
 
 
 # class map(models.Model):
